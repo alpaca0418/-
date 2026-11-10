@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>도쿄재판 재판관</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: 폰 세로 화면용 픽셀 미연시. 위에 게이지, 가운데 법정 무대와 캐릭터, 아래 대사창. */
+:root{
+  --bg:#1b1526; --ink:#2a1f3a; --cream:#fff6e4; --cream2:#ffe9c4; --pink:#ff8fb1; --yellow:#ffd166; --sky:#6ec1ff; --seal:#e0544a;
+  --jua:'Jua','Apple SD Gothic Neo','Malgun Gothic',sans-serif; --px:'Press Start 2P',monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--cream);font-family:var(--jua);font-size:18px;line-height:1.55;
+  padding-block:16px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+#top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#top b{font-family:var(--px);font-size:10px;color:var(--pink);font-weight:400}
+#hud{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mt{display:flex;flex-direction:column;gap:4px;min-width:0}
+.mt span.l{font-size:14px;color:var(--cream2)}
+.seg{display:flex;gap:2px}
+.seg i{flex:1;height:10px;background:#3a2f4d;border:2px solid #0e0a16}
+.seg.j i.on{background:var(--yellow)} .seg.r i.on{background:var(--sky)}
+#stage{position:relative;border:4px solid #0e0a16;box-shadow:0 0 0 4px var(--ink),0 6px 0 4px #0e0a16;background:#000;aspect-ratio:16/10;overflow:hidden}
+#bg{width:100%;height:100%}
+#ch{position:absolute;left:50%;bottom:0;width:36%;transform:translateX(-50%);animation:bob 1.2s steps(2) infinite}
+@keyframes bob{50%{transform:translateX(-50%) translateY(-3px)}}
+#dlg{position:relative;background:var(--cream);color:var(--ink);border:4px solid #0e0a16;box-shadow:0 0 0 4px var(--cream2),0 0 0 8px #0e0a16;padding:22px 16px 28px;margin:6px 8px 8px;min-height:150px;cursor:pointer;display:flex;flex-direction:column;gap:10px}
+#nm{position:absolute;top:-16px;left:12px;font-size:16px;padding:2px 12px;border:4px solid #0e0a16;background:var(--pink);color:#2a1f3a}
+#tx{font-size:19px;min-height:3.1em;overflow-wrap:anywhere}
+#tx.real{color:#8a2a22}
+#nx{position:absolute;right:14px;bottom:8px;font-size:14px;color:var(--seal);animation:blink .8s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+#opts{display:flex;flex-direction:column;gap:8px}
+#opts button{font:inherit;font-size:18px;text-align:left;color:var(--ink);background:#fff;border:4px solid #0e0a16;box-shadow:0 4px 0 #0e0a16;padding:8px 12px;cursor:pointer;min-width:0}
+#opts button small{display:block;font-size:14px;color:#6b5a80}
+#opts button:hover,#opts button:focus-visible{background:var(--yellow);outline:none}
+#opts button:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0a16}
+.card{background:var(--cream);color:var(--ink);border:4px solid #0e0a16;box-shadow:0 0 0 4px var(--cream2),0 0 0 8px #0e0a16;margin:6px 8px 8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card h3{margin:0;font-size:20px;font-weight:400;color:#b13a63}
+.card p{margin:0;font-size:17px}
+.faces{display:flex;gap:12px}
+.face{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:14px;text-align:center;min-width:0}
+.face canvas{width:84px;height:105px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{border-bottom:2px dashed #cdbb97;padding:6px 4px;text-align:left;font-weight:400;vertical-align:top}
+th{color:#6b5a80}
+.src{font-size:13px;color:#6b5a80}
+.again{font:inherit;font-size:19px;color:var(--ink);background:var(--yellow);border:4px solid #0e0a16;box-shadow:0 4px 0 #0e0a16;padding:8px 12px;cursor:pointer}
+.again:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0a16}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){#ch,#nx{animation:none}}
+html{-webkit-text-size-adjust:100%}body{margin:0}
+</style>
+</head>
+<body>
+<main>
+  <div id="top"><b>TOKYO TRIAL</b><span id="prog" class="src" style="color:var(--cream2)"></span></div>
+  <div id="hud">
+    <div class="mt"><span class="l">정의 (같은 기준)</span><span class="seg j" id="mj"></span></div>
+    <div class="mt"><span class="l">현실 (승자의 이익)</span><span class="seg r" id="mr"></span></div>
+  </div>
+  <div id="stage"><canvas id="bg" width="160" height="100"></canvas><canvas id="ch" width="32" height="40"></canvas></div>
+  <div id="dlg" tabindex="0" role="button" aria-label="다음 대사"><div id="nm"></div><div id="tx"></div><div id="opts"></div><div id="nx">▼</div></div>
+  <div id="endbox"></div>
+</main>
+<script>
+/* ---------- 픽셀 스프라이트 (모두 오리지널 캐릭터) ---------- */
+function drawChar(cv,o){
+  var x=cv.getContext('2d');x.clearRect(0,0,32,40);
+  function R(a,b,w,h,c){x.fillStyle=c;x.fillRect(a,b,w,h)}
+  var sk=o.skin||'#fbdcc0',hr=o.hair||'#4a3426',ou=o.outfit||'#3b4a6b',dk='#1c1620',m=o.mood||'n';
+  R(9,37,14,2,'rgba(0,0,0,.35)');
+  R(12,34,3,4,dk);R(17,34,3,4,dk);
+  R(11,26,10,9,ou);R(9,27,2,6,ou);R(21,27,2,6,ou);R(9,32,2,2,sk);R(21,32,2,2,sk);
+  R(15,26,2,3,'#fff');
+  R(6,10,20,12,hr);
+  R(8,9,16,17,sk);R(7,11,18,13,sk);
+  R(7,7,18,5,hr);R(6,9,3,11,hr);R(23,9,3,11,hr);R(8,12,5,3,hr);R(14,12,4,2,hr);R(19,12,5,3,hr);
+  if(m==='h'){
+    R(11,19,1,1,dk);R(12,18,1,1,dk);R(13,19,1,1,dk);R(19,19,1,1,dk);R(20,18,1,1,dk);R(21,19,1,1,dk);
+    R(14,23,4,1,'#b03a3a');R(15,24,2,1,'#b03a3a');
+  }else{
+    R(11,17,3,4,dk);R(19,17,3,4,dk);R(11,17,1,1,'#fff');R(19,17,1,1,'#fff');
+    if(m==='s'){R(10,15,3,1,dk);R(13,14,1,1,dk);R(20,14,1,1,dk);R(20,15,3,1,dk);R(12,21,1,2,'#7fc4ff');R(15,24,2,1,'#b03a3a');R(14,25,1,1,'#b03a3a');R(17,25,1,1,'#b03a3a')}
+    else{R(15,23,2,1,'#b03a3a')}
+  }
+  R(9,21,3,2,'#ff9aa8');R(21,21,3,2,'#ff9aa8');
+  var h=o.hat;
+  if(h==='wig'){R(6,2,20,7,'#f3f1ee');R(4,8,3,8,'#f3f1ee');R(25,8,3,8,'#f3f1ee');R(10,4,2,2,'#d9d6d0');R(16,3,2,2,'#d9d6d0');R(21,5,2,2,'#d9d6d0')}
+  if(h==='cat'){R(7,3,4,5,hr);R(8,4,2,3,'#f5a3b5');R(21,3,4,5,hr);R(22,4,2,3,'#f5a3b5');R(14,28,4,2,'#e0544a')}
+  if(h==='cap'){R(6,3,20,5,'#4b5d4a');R(5,8,22,2,'#2f3b2f');R(15,4,2,3,'#f2c94c')}
+  if(h==='school'){R(7,4,18,5,'#1f2430');R(9,9,14,1,'#1f2430');R(15,6,2,2,'#d2ac5e')}
+}
+function drawChair(cv){
+  var x=cv.getContext('2d');x.clearRect(0,0,32,40);
+  function R(a,b,w,h,c){x.fillStyle=c;x.fillRect(a,b,w,h)}
+  R(7,37,18,2,'rgba(0,0,0,.35)');
+  R(10,8,12,16,'#7a5232');R(12,10,8,12,'#5a3b22');R(8,24,16,4,'#8c6139');R(9,28,3,9,'#6a4528');R(20,28,3,9,'#6a4528');
+  R(15,12,2,5,'#ffd166');R(15,19,2,2,'#ffd166');
+}
+function drawBG(cv,tint){
+  var x=cv.getContext('2d');
+  function R(a,b,w,h,c){x.fillStyle=c;x.fillRect(a,b,w,h)}
+  R(0,0,160,62,'#4a4f6b');R(0,40,160,22,'#5b4636');
+  for(var i=0;i<160;i+=20){R(i+2,43,16,16,'#6a5340');R(i+2,43,16,1,'#7a6250')}
+  [18,69,120].forEach(function(a){R(a,8,22,28,'#20263a');R(a+2,10,18,24,'#a9c3e6');R(a+10,10,2,24,'#20263a');R(a+2,21,18,2,'#20263a');R(a+4,12,5,5,'#d6e6f7')});
+  R(0,62,160,38,'#3a2d44');
+  for(var r=0;r<7;r++)for(var c=0;c<20;c++){if((r+c)%2===0)R(c*8,62+r*6,8,6,'#47385a')}
+  R(48,44,64,14,'#7a5232');R(45,41,70,4,'#9a6a3c');R(50,47,60,1,'#5a3b22');R(78,38,4,3,'#d2ac5e');R(76,36,8,2,'#8c6139');
+  if(tint){R(0,0,160,100,tint)}
+}
+/* ---------- 등장인물 ---------- */
+var CH={
+  cat:{name:"서기냥",col:"#ffb3c7",o:{hat:"cat",hair:"#d9a066",outfit:"#6b4f8f"}},
+  off:{name:"연합군 장교",col:"#b9d6a0",o:{hat:"cap",hair:"#c9a24a",outfit:"#4b5d4a"}},
+  kid:{name:"한울",col:"#a9c7ff",o:{hat:"school",hair:"#3a2a22",outfit:"#26325a"}},
+  chair:{name:"빈 피고인석",col:"#e5dccb"}
+};
+var TINTS=[null,"rgba(90,40,130,.28)","rgba(160,50,40,.24)","rgba(40,90,160,.22)"];
+/* ---------- 안건 ---------- */
+var CASES=[
+ {tint:0,pre:[["cat","첫 안건은 죄목이에요. 「평화에 대한 죄」는 일본이 전쟁을 일으킬 때는 명문화되지 않았던 죄목이에요.","n"]],
+  qwho:"cat",q:"이 죄목으로 지도자를 처벌할까요?",
+  o:[{l:"적용한다",s:"침략 지도자의 책임을 묻는다",j:-1,r:1,res:"침략 책임을 물을 길이 열렸어요. 대신 행위 당시에 없던 죄목이라는 소급 처벌 논란이 따라붙어요.",rm:"s"},
+     {l:"적용하지 않는다",s:"행위 당시 법이 없으면 처벌하지 않는다",j:1,r:-1,res:"법의 원칙은 지켰지만, 전쟁을 일으킨 지도자의 책임을 국제법으로 묻기 어려워졌어요.",rm:"h"}],
+  real:"실제 재판은 이 죄목을 적용했어요. 논문은 소급 처벌 문제를 도쿄재판의 한계로 짚어요.",react:null},
+ {tint:1,pre:[["cat","두 번째 안건은 일왕이에요. 전쟁에 가장 큰 책임이 있는 사람이죠.","n"],["chair","피고인석 한쪽에 빈 의자가 놓여 있다. 이 자리에 앉아야 할 사람이 있을까?","n"],["off","재판관님, 기소하면 점령 통치가 흔들릴 수 있습니다. 부디 신중히 판단해 주십시오.","n"]],
+  qwho:"cat",q:"일왕을 기소할까요?",
+  o:[{l:"기소한다",s:"최대 책임자에게도 같은 기준을 적용한다",j:1,r:-1,res:"기준은 일관돼요. 대신 점령 통치가 흔들릴 수 있다는 부담을 떠안아요.",rm:"s"},
+     {l:"기소하지 않는다",s:"전후 일본의 안정을 우선한다",j:-1,r:1,res:"점령은 안정되지만, 가장 큰 책임자를 빼고 다른 지도자만 처벌했다는 비판이 남아요.",rm:"h"}],
+  real:"실제 재판에서 일왕은 기소되지 않았어요. 논문은 이를 도쿄재판의 오점으로 평가해요.",
+  react:{p:["off","…점령이 걱정되지만, 결정을 따르겠습니다.","s"],n:["off","현명한 판단입니다, 재판관님!","h"]}},
+ {tint:2,pre:[["cat","세 번째 안건이에요. 미국이 원자탄을 사용한 책임도 이 재판에서 다룰 수 있을까요?","n"],["off","이 재판은 일본의 책임을 묻는 자리입니다. 다른 이야기는 필요 없다고 생각합니다.","n"],["cat","참고로 재판관 11명 중에는 미국 재판관도 있어요.","n"]],
+  qwho:"cat",q:"원폭 책임도 안건으로 올릴까요?",
+  o:[{l:"안건으로 올린다",s:"전쟁 중 모든 국가의 행위를 같은 기준으로 본다",j:1,r:-1,res:"기준은 일관되지만, 점령을 주도하는 미국과 정면으로 부딪혀요.",rm:"s"},
+     {l:"올리지 않는다",s:"재판은 일본의 책임에만 집중한다",j:-1,r:1,res:"재판은 순조롭지만, 승자의 책임은 묻지 않는다는 「승자의 정의」 비판을 피하기 어려워요.",rm:"h"}],
+  real:"실제 재판에서 원폭 책임은 거론되지 않았어요. 논문은 일본의 전후 안정을 노린 미국의 정치적 고려 때문으로 봐요.",
+  react:{p:["off","…이해합니다. 하지만 쉽지 않을 겁니다.","s"],n:["off","잘 결정하셨습니다, 재판관님!","h"]}},
+ {tint:3,pre:[["kid","저… 한국에서 왔어요. 식민 지배로 우리나라는 나라 전체가 큰 피해를 입었어요.","s"],["kid","그런데 이 재판에서 우리 이야기는 어디에 있나요?","s"],["cat","마지막 안건이에요. 소추 범위, 피의자 선정, 재판부 구성에 한국이 의견을 내게 할까요?","n"]],
+  qwho:"cat",q:"한국의 참여를 받아들일까요?",
+  o:[{l:"받아들인다",s:"식민 지배 피해국의 입장을 반영한다",j:1,r:-1,res:"식민 지배와 강제동원 책임이 다뤄질 길이 열려요. 대신 연합국 중심으로 짜인 재판 구성을 바꿔야 해요.",rm:"h"},
+     {l:"기존 구성을 유지한다",s:"11개국 재판부로 속도를 낸다",j:-1,r:1,res:"재판은 빠르게 진행되지만, 식민 지배 피해국의 목소리가 빠진 채 판결이 내려져요.",rm:"s"}],
+  real:"실제 재판에서 한국의 입장은 반영되지 못했어요. 논문은 한국이 나라 전체가 피해를 입고도 피해국으로 취급되지 않았다고 지적해요.",
+  react:{p:["kid","고맙습니다, 재판관님! 꼭 기억할게요!","h"],n:["kid","…알겠어요. 그래도 잊지 말아 주세요.","s"]}}
+];
+/* ---------- 엔진 ---------- */
+var pend=null,J=0,R=0,q=[],typing=false,timer=null,full="",waiting=false,choosing=false;
+var $=function(i){return document.getElementById(i)};
+function seg(el,v){var h="";for(var i=0;i<8;i++)h+='<i class="'+(i<v+4?"on":"")+'"></i>';el.innerHTML=h}
+function hud(){seg($("mj"),J);seg($("mr"),R)}
+function show(who,mood){
+  var cv=$("ch"),c=CH[who];
+  if(who==="chair"){drawChair(cv)}else{var o={};for(var k in c.o)o[k]=c.o[k];o.mood=mood||"n";drawChar(cv,o)}
+  $("nm").textContent=c.name;$("nm").style.background=c.col;
+}
+function type(text,cb){
+  clearInterval(timer);full=text;var p=0;typing=true;$("tx").textContent="";$("nx").hidden=true;pend=cb;
+  timer=setInterval(function(){p++;$("tx").textContent=full.slice(0,p);if(p>=full.length){clearInterval(timer);typing=false;var f=pend;pend=null;f&&f()}},28);
+}
+function say(who,text,mood,real){return {t:"say",who:who,text:text,mood:mood,real:real}}
+function next(){
+  if(!q.length)return;var s=q.shift();
+  if(s.t==="fn"){s.f();next();return}
+  if(s.t==="say"){
+    show(s.who,s.mood);$("opts").innerHTML="";$("tx").className=s.real?"real":"";
+    if(s.real){$("nm").textContent="서기냥 · 실제 재판";}
+    waiting=false;
+    type((s.real?"[실제 도쿄재판] ":"")+s.text,function(){waiting=true;$("nx").hidden=false});
+  }else if(s.t==="choice"){
+    show(s.who,"n");$("tx").className="";choosing=true;waiting=false;
+    type(s.text,function(){
+      var h="";s.opts.forEach(function(o,k){h+='<button data-k="'+k+'">'+o.l+'<small>'+o.s+'</small></button>'});
+      $("opts").innerHTML=h;
+      $("opts").querySelectorAll("button").forEach(function(b){b.onclick=function(e){e.stopPropagation();pick(s,+b.dataset.k)}});
+    });
+  }else if(s.t==="end"){showEnd()}
+}
+function pick(s,k){
+  var o=s.opts[k],c=s.c;choosing=false;J+=o.j;R+=o.r;hud();$("opts").innerHTML="";
+  var add=[say("cat",o.res,o.rm),say("cat",c.real,"n",true)];
+  if(c.react){var r=o.j>0?c.react.n:c.react.p;if(c.react.p[0]==="kid"){r=o.j>0?c.react.p:c.react.n}else{r=o.j>0?c.react.p:c.react.n}add.push(say(r[0],r[1],r[2]))}
+  q=add.concat(q);next();
+}
+function adv(){
+  if(choosing&&!typing)return;
+  if(typing){clearInterval(timer);$("tx").textContent=full;typing=false;var f=pend;pend=null;f&&f();return}
+  if(waiting){waiting=false;next()}
+}
+$("dlg").addEventListener("click",function(e){if(e.target.closest("#opts button"))return;adv()});
+document.addEventListener("keydown",function(e){if(e.key===" "||e.key==="Enter"){if(document.activeElement&&document.activeElement.closest("#opts"))return;e.preventDefault();adv()}});
+/* ---------- 시작 / 끝 ---------- */
+function setBG(i){drawBG($("bg"),TINTS[i])}
+function start(){
+  J=0;R=0;hud();$("endbox").innerHTML="";q=[];$("prog").textContent="";
+  setBG(0);
+  q.push(say("cat","어서 오세요, 재판관님! 저는 서기관 서기냥이에요, 냥.","h"));
+  q.push(say("cat","1946년 도쿄예요. 1차 탐구에서 본 만국공법 기억나세요? 평등을 말했지만 열강의 이익대로 굴러갔죠.","n"));
+  q.push(say("cat","이번엔 그 수혜자였던 일본이 피고석에 앉아요. 재판관님은 11개국 재판관 중 한 명이에요.","n"));
+  q.push(say("cat","네 가지 안건을 정해 주세요. 위의 정의와 현실 게이지를 잘 보세요!","h"));
+  CASES.forEach(function(c,i){
+    q.push({t:"fn",f:function(){setBG(c.tint);$("prog").textContent="안건 "+(i+1)+" / "+CASES.length}});
+    c.pre.forEach(function(p){q.push(say(p[0],p[1],p[2]))});
+    q.push({t:"choice",who:c.qwho,text:c.q,opts:c.o,c:c});
+  });
+  q.push({t:"end"});
+  next();
+}
+function showEnd(){
+  var t,d;
+  if(J>=2){t="원칙을 지킨 재판관";d="같은 기준을 모두에게 적용하려 했어요. 그 대가로 현실의 반발과 부담을 떠안았죠. 실제 재판에서 이런 선택은 드물었어요."}
+  else if(J<=-2){t="현실을 택한 재판관";d="점령 안정과 연합국의 이익을 먼저 챙겼어요. 실제 도쿄재판과 같은 선택이에요. 그래서 「승자의 정의」라는 비판이 지금도 남아 있어요."}
+  else{t="절충한 재판관";d="원칙도 현실도 조금씩 택했어요. 어느 쪽을 골라도 무엇인가는 빠졌어요."}
+  setBG(0);show("cat","h");$("opts").innerHTML="";$("tx").className="";$("prog").textContent="판결";
+  type("판결이에요! 당신은 「"+t+"」. "+d,function(){});
+  var km=J>=1?"h":J<=-1?"s":"n",om=R>=1?"h":R<=-1?"s":"n";
+  var kc=J>=1?"한울이 고마워해요":J<=-1?"한울이 쓸쓸해해요":"한울이 지켜보고 있어요";
+  var oc=R>=1?"장교가 만족해해요":R<=-1?"장교가 걱정해요":"장교가 지켜보고 있어요";
+  $("endbox").innerHTML=
+   '<div class="card"><h3>등장인물의 반응</h3><div class="faces"><div class="face"><canvas id="f1" width="32" height="40"></canvas>'+kc+'</div><div class="face"><canvas id="f2" width="32" height="40"></canvas>'+oc+'</div></div></div>'+
+   '<div class="card"><h3>실제 도쿄재판의 선택</h3><div class="scroll"><table><tr><th>안건</th><th>실제 결과</th></tr>'+
+   '<tr><td>죄목</td><td>평화에 대한 죄 적용 (소급 논란)</td></tr><tr><td>일왕</td><td>기소하지 않음</td></tr><tr><td>원폭</td><td>미국의 책임은 거론되지 않음</td></tr><tr><td>한국</td><td>식민 지배 피해국의 입장 미반영</td></tr></table></div>'+
+   '<p>네 안건 모두 현실 쪽 선택이었어요. 게이지로 보면 정의 −4, 현실 +4예요.</p></div>'+
+   '<div class="card"><h3>1차 탐구와 이어서 생각해 보기</h3><p>만국공법은 평등을 말했지만 열강의 이익대로 작동했어요. 도쿄재판은 새 국제법으로 그 수혜자였던 일본을 심판했지만, 심판의 기준은 모두에게 똑같이 적용되지 않았어요. 그렇다면 만국공법 그 이후의 국제법은 정말 달라졌을까요?</p>'+
+   '<p class="src">참고: 「도쿄국제군사재판과 뉘른베르크 국제군사재판에 대한 국제법적 비교 연구」</p>'+
+   '<button class="again" id="again">다시 하기</button></div>';
+  var o1={},o2={};for(var k in CH.kid.o)o1[k]=CH.kid.o[k];for(var k2 in CH.off.o)o2[k2]=CH.off.o[k2];
+  o1.mood=km;o2.mood=om;drawChar($("f1"),o1);drawChar($("f2"),o2);
+  $("again").onclick=function(){start();window.scrollTo(0,0)};
+}
+start();
+</script>
+</body>
+</html>
